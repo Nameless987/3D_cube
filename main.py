@@ -12,6 +12,7 @@ cnv.pack(padx=0, pady=0)
 
 prex = 0
 prey = 0
+distance = 5
 
 #-------------------------------------------------------------------------------------------------------------------------------------------
 #class
@@ -29,14 +30,7 @@ class box(object):
                         [[-1], [1], [-1]],
                         [[-1], [-1], [1]],
                         [[-1], [-1], [-1]]]
-        self.dots =    [[[0], [0]],
-                        [[0], [0]],
-                        [[0], [0]],
-                        [[0], [0]],
-                        [[0], [0]],
-                        [[0], [0]],
-                        [[0], [0]],
-                        [[0], [0]]]
+        self.dots = [n for n in range(8)]
 
 cube = box()
 
@@ -55,33 +49,65 @@ def matrix_mult(a, b):
 #-------------------------------------------------------------------------------------------------------------------------------------------
 #draw
 
-def draw():
-    cnv.delete(ALL)
+def draw(x, y, t):
+    cnv.create_oval(x-50*t, y-50*t, x+50*t, y+50*t, fill="blue")
 
 #-------------------------------------------------------------------------------------------------------------------------------------------
 #control
 
 def control():
-    global player_playing
+    global distance
     if keyboard.is_pressed("r"):
         init()
+    if keyboard.is_pressed("up"):
+        distance += 0.2
+    if keyboard.is_pressed("down"):
+        distance -= 0.2
+    if keyboard.is_pressed("right"):
+        cube.alphaz += 0.1
+    if keyboard.is_pressed("left"):
+        cube.alphaz -= 0.1
         
 #-------------------------------------------------------------------------------------------------------------------------------------------
 #brain
 
 def brain():
-    rotationx = []
-    rotationy = []
-    rotationz = []
+    global distance
+    cnv.delete(ALL)
+    rotationx = [[1, 0, 0],
+                 [0, np.cos(cube.alphax), -np.sin(cube.alphax)],
+                 [0, np.sin(cube.alphax), np.cos(cube.alphax)]]
+
+    rotationy = [[np.cos(cube.alphay), 0, -np.sin(cube.alphay)],
+                 [0, 1, 0],
+                 [np.sin(cube.alphay), 0, np.cos(cube.alphay)]]
+
+    rotationz = [[np.cos(cube.alphaz), -np.sin(cube.alphaz), 0],
+                 [np.sin(cube.alphaz), np.cos(cube.alphaz), 0],
+                 [0, 0, 1]]
     
+    for point in cube.points:
+        cube_2d = np.dot(rotationx, point)
+        cube_2d = np.dot(rotationy, cube_2d)
+        cube_2d = np.dot(rotationz, cube_2d)
+
+        z = 1/(distance - cube_2d[2][0])
+        projection_matrix = [[z, 0, 0], [0, z, 0]]
+
+        projection = np.dot(projection_matrix, cube_2d)
+
+        x = int(projection[0][0]*300)+250
+        y = int(projection[1][0]*300)+250
+
+        draw(x, y, z)
 
 #-------------------------------------------------------------------------------------------------------------------------------------------
 #move
 
 def move(pos):
     global prex, prey
-    cube.alphax += -(pos.x-prex)/100
-    cube.alphay += (pos.y-prey)/100
+    cube.alphay += -(pos.x-prex)/100
+    cube.alphax += -(pos.y-prey)/100
     prex = pos.x
     prey = pos.y
 
@@ -99,7 +125,6 @@ def newpos(pos):
 def main():
     control()
     brain()
-    draw()
     tk.bind("<B1-Motion>", move)
     tk.bind("<Button-1>", newpos)
     tk.after(15, main)
